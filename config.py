@@ -17,7 +17,7 @@ conf.registerGlobalValue(Status, 'source_url',
         registry.String('http://api.hacdc.org/OccSensor.txt', '''Source to check for updates'''))
 
 conf.registerGlobalValue(Status, 'channels',
-                            registry.String(['#hacdcbot'], ''''''))
+                            registry.SpaceSeparatedListOfStrings('#hacdcbot', ''''''))
 
 conf.registerGlobalValue(Status, 'debug_channel',
                     registry.String('#hacdcbot', ''''''))
