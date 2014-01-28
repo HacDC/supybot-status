@@ -39,6 +39,7 @@ class Updater:
         self.interval_s = conf.get('interval_s')
         self.last_status = None
         self.status = None
+        self._first_run = True
 
     def __missing_url_config(self):
         raise Exception('Missing source_url configuration value')
@@ -83,8 +84,11 @@ class Updater:
             except Exception as e:
                 debug(repr(e))
                 debug('both times are not yet set')
-            if self.status.time_changed and self.last_status.time_changed and (self.status.time_changed - self.last_status.time_changed).total_seconds() > 60:
+            if self.status.time_changed and self.last_status.time_changed and (self.status.time_changed - self.last_status.time_changed).total_seconds() > 60 and self.status.info.get('lights') != self.last_status.info.get('lights'):
                 debug('new status')
+                return True
+            elif self._first_run:
+                self._first_run = False
                 return True
         return False
 
@@ -124,7 +128,7 @@ class Status:
     ''' Status class
     For the storage and comparison of status states.
     '''
-    def __init__(self, time_changed, sensors, source_string):
+    def __init__(self, time_changed, sensors, source_string, info):
         debug('Status(sensors)', *([str(x) for x in sensors]))
         self.time_changed = time_changed
         try:
@@ -132,6 +136,7 @@ class Status:
         except ImportError:
             time.sleep(3)
             self.message = {'raw':source_string, 'human':None, 'default':None, 'changed': self.time_changed.strftime('%s')}
+        self.info = info
         self.sensors = sensors
         self.source_string = source_string
         self._set_message()
@@ -139,7 +144,7 @@ class Status:
 
     def _sensor_status(self):
         ''' Return a human friendly string representing the status of all the sensors '''
-        return ', '.join(['%s is %s' % (k.label, k.boolstr) for k in self.sensors.values()])
+        return ', '.join(['%s is %s' % (k.label, k.boolstr) for k in self.sensors.values() if k.label])
 
     def _set_message(self):
         ''' Set all formats of the status messages '''
@@ -151,13 +156,13 @@ class Status:
         ''' Set the default message with the more traditional format of status '''
         if self.time_changed:
             try:
-                date = datetime.datetime.strftime(self.time_changed, '%I:%M%p %A %d %b')
+                date = self.time_changed.strftime('%I:%M%p %A %d %b')
             except ImportError:
                 time.sleep(3)
-                date = datetime.datetime.strftime(self.time_changed, '%I:%M%p %A %d %b')
+                date = self.time_changed.strftime('%I:%M%p %A %d %b')
         else:
             date = 'date unknown'
-        self.message['default'] = 'HacDC is %s since %s' % ({True:'open', False:'closed'}[self.sensors.get('lights').boolean], date)
+        self.message['default'] = 'HacDC is %s since %s' % ({True:'open', False:'closed'}[self.info.get('lights').boolean], date)
 
     def _set_human_message(self):
         ''' Set the human friendly message to a more verbose readout of the status '''
@@ -169,7 +174,7 @@ class Status:
 
     def __dict__(self):
         ''' Return a representation of the object as a dict '''
-        return {'time_changed': self.time_changed, 'message': self.message, 'sensors': dict((k, v.__dict__) for k,v in self.sensors.items()),'source_string':self.source_string}
+        return {'time_changed': self.time_changed, 'message': self.message, 'sensors': dict((k, v.__dict__) for k,v in self.sensors.items()), 'info': self.info,'source_string':self.source_string}
 
     def __eq__(self, other):
         ''' The sensor only updates on changes so we can assume a change has occured if there has been an update '''
@@ -190,18 +195,19 @@ class StatusParser:
     _date_format = "%A,_%b_%d_at_%I:%M_%p" # C %l == py %I
     _field_sep = ";"
     _key_val_sep = "="
-    _body_sensors = {'gpio4': Sensor('GPIO4', '', None), 'gpio5': Sensor('GPIO5', '', None), 'fa3': Sensor('hall_light_on', 'hall light'), 'fa4': Sensor('main_light_on', 'main room light'), 'fa5': Sensor('work_light_on','work room light')}
+    _body_sensors = {'gpio4': Sensor('GPIO4', None, None), 'gpio5': Sensor('GPIO5', None, None), 'fa3': Sensor('hall_light_on', 'hall light'), 'fa4': Sensor('main_light_on', 'main room light'), 'fa5': Sensor('work_light_on','work room light')}
     _subject_sensors = {'lights': Sensor('any_lights_on', 'one or more lights')}
 
     def __init__(self, status_string=None):
 	 self.collected_values = {}
-	 self.sensor_info = dict(self._body_sensors.items() + self._subject_sensors.items())
+	 self.sensor_info = self._body_sensors
 	 self.last_changed_date = None
 	 self.status_string = status_string
 
-    def set_sensor(self, name, value):
+    def set_sensor(self, name, value, sensor_info=None):
         ''' Set the state of a sensor '''
-	self.sensor_info[name].set(value)
+        sensor_info = sensor_info or self.sensor_info
+	sensor_info[name].set(value)
 
     def _split_dict(self, string):
         ''' Split a string formated as key-value pairs into a dict '''
@@ -233,7 +239,7 @@ class StatusParser:
         ''' Parse the "subject" entry. '''
         sub = self._split_key_val(subject_string)
 	if len(sub) == 2 and sub[0].lower() and sub[1].lower() in ('true', 'false', 'on', 'off'):
-	    self.set_sensor(sub[0].lower(), sub[1].lower())
+	    self.set_sensor(sub[0].lower(), sub[1].lower(), self._subject_sensors)
 
     def _parse_date(self, date_string):
         ''' Parse the "date" entry. '''
@@ -270,4 +276,4 @@ class StatusParser:
         ''' Return a Status object based on the remote source. '''
         self.parse_status(status_string)
         debug('StatusParser.get_status,sensor_info', str(self.sensor_info))
-        return Status(self.last_changed_date, self.sensor_info, self.status_string)
+        return Status(self.last_changed_date, self.sensor_info, self.status_string, self._subject_sensors)
