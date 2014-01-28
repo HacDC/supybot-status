@@ -24,13 +24,14 @@ class StatusHandler(threading.Thread):
         try:
             while self.keep_alive:
                 message = self.updater.check()
+                print('message:', str(message))
                 if isinstance(message, dict) and message.get('human') and message.get('raw') and message.get('default'):
                     self._update_registry(message)
                     self._notify_channels()
                 time.sleep(self.registryValue('interval'))
             return None
         except BaseException as e:
-            irc.error('Exception: %s' % repr(e))        
+            ircmsgs.error('Exception: %s' % repr(e))        
 
     def _notify_channels(self):
         for channel in self.registryValue('channels'):
@@ -49,10 +50,20 @@ class StatusHandler(threading.Thread):
     def close(self):
         self.keep_alive = False
 
+    def initialize_status(self):
+        reg_vals = [self.registryValue('message_default'),
+                self.registryValue('message_human'), 
+                self.registryValue('message_raw')]
+        print('reg_vals:', str(reg_vals))
+        if None in reg_vals or '' in [str(x).strip() for x in reg_vals]:
+            self.updater.get_status()
+            self._update_registry(self.updater.status.message)
+
     def _update_registry(self, message):
-        self.setRegistryValue('message_default', message['default'])
-        self.setRegistryValue('message_human', message['human'])
-        self.setRegistryValue('message_raw', message['raw'])
+        no_status_message = 'No status available yet.'
+        self.setRegistryValue('message_default', message['default'] or no_status_message)
+        self.setRegistryValue('message_human', message['human'] or no_status_message)
+        self.setRegistryValue('message_raw', message['raw'] or no_status_message)
 
 class Status(callbacks.Plugin):
     '''This plugin checks an http server for updates and announces changes an IRC channel.'''
@@ -61,10 +72,12 @@ class Status(callbacks.Plugin):
         self.__parent = super(Status, self)
         self.__parent.__init__(irc)
         self.status_handler = StatusHandler()
+        self.status_handler.irc = irc
         self.status_handler.registryValue = self.registryValue
         self.status_handler.setRegistryValue = self.setRegistryValue
         self.status_handler.channel_states = {}
         self.status_handler.updater = update.Updater(source_url=self.registryValue('source_url'))
+        self.status_handler.initialize_status()
         self.status_handler.setDaemon(True)
         self.status_handler.start()
 
@@ -77,7 +90,7 @@ class Status(callbacks.Plugin):
         if message_format not in formats:
             irc.error('''"%s", %s''' % (message_format, ''''%s' is not a valid format. Valid formats are: default, human, raw''' % message_format))
         else:
-            irc.reply("%s" % formats.get(message_format))
+            irc.reply("%s" % formats.get(message_format) or 'No status is available yet.')
 
     def updates(self, irc, msg, args, channel, state):
         '''Turn updates on or off in the current channel.'''

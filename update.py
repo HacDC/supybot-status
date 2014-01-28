@@ -32,7 +32,7 @@ def debug(*strings):
 
 class Updater:
     ''' Update the bot from a remote status source '''
-    def __init__(self, **passed_conf):
+    def __init__(self, last_status_string=None, **passed_conf):
         global conf
         conf.update(passed_conf)
         self.source = conf.get('source_url') or self.__missing_url_config()
@@ -48,6 +48,7 @@ class Updater:
         return None if no change or self.status.message if there is a new status
         '''
         self.get_status()
+        debug('self.status:', self.status, '\nself.last_status:', self.last_status)
         if self.is_new_status():
             return self.status.message
         return None
@@ -56,10 +57,19 @@ class Updater:
         ''' Grab the status from the sensor upload url '''
         debug('get_status')
         parser = StatusParser()
-        result = urllib2.Request(url=self.source)
-        if result.has_data():
-            if self.status: self.last_status = self.status
-            self.status = parser.get_status(result.get_data())
+        debug('self.source:', self.source)
+        request = urllib2.Request(url=self.source)
+        result = urllib2.urlopen(request)
+        debug('has data:', str(result.__dict__))
+        if result.getcode() == 200:
+            status_string = result.read()
+            debug('status from server:', status_string)
+            status = parser.get_status(status_string)
+            if self.status:
+                self.last_status = self.status
+            else:
+                self.last_status = status
+            self.status = status
             debug('parser returned', str(self.status.__dict__))
 
     def is_new_status(self):
