@@ -6,7 +6,6 @@ import supybot.callbacks as callbacks
 import supybot.world as world
 import supybot.ircmsgs as ircmsgs
 import threading
-import SocketServer
 import select
 import time
 import _strptime # required to prevent import errors
@@ -50,12 +49,12 @@ class StatusHandler(threading.Thread):
     def close(self):
         self.keep_alive = False
 
-    def initialize_status(self):
+    def initialize_status(self, force=False):
         reg_vals = [self.registryValue('message_default'),
                 self.registryValue('message_human'), 
                 self.registryValue('message_raw')]
         print('reg_vals:', str(reg_vals))
-        if None in reg_vals or '' in [str(x).strip() for x in reg_vals]:
+        if (None in reg_vals or '' in [str(x).strip() for x in reg_vals]) or force:
             self.updater.get_status()
             self._update_registry(self.updater.status.message)
 
@@ -105,8 +104,14 @@ class Status(callbacks.Plugin):
                 self.status_handler.channel_states[channel] = "off"
                 irc.reply("Updates for %s are now off" % channel )
 
+    def sensordata(self, irc, msg, args, action):
+        if action == 'reload':
+            self.status_handler.initialize_status(force=True)
+            irc.reply('Forcing update of all sensor data')
+
     updates = wrap(updates, ['inChannel', optional('boolean')])
     status = wrap(status, [optional('text')])
+    sensordata = wrap(sensordata, ['text'])
 
     def die(self):
         self.status_handler.close()
