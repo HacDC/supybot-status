@@ -25,6 +25,9 @@ logger.setLevel(logging.WARN)
 alien_char = [u'\u1d0003']
 
 
+logger = logging.getLogger()
+logger.setLevel(logging.WARN)
+
 class StatusHandler(threading.Thread):
     # Updater instance
     updater = None
