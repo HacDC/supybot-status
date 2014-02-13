@@ -16,14 +16,17 @@ conf.registerGlobalValue(Status, 'use_notice',
 conf.registerGlobalValue(Status, 'source_url',
         registry.String('http://api.hacdc.org/OccSensor.txt', '''Source to check for updates'''))
 
-conf.registerGlobalValue(Status, 'channels',
-                            registry.SpaceSeparatedListOfStrings('#hacdcbot', ''''''))
+conf.registerGlobalValue(Status, 'quiet_channels',
+                            registry.SpaceSeparatedListOfStrings(' #hacdcbot2 ', '''Channels to not announce changes in.'''))
 
 conf.registerGlobalValue(Status, 'debug_channel',
                     registry.String('#hacdcbot', ''''''))
 
 conf.registerGlobalValue(Status, 'interval',
                     registry.Integer(3, '''Interval to check remote status in seconds'''))
+
+conf.registerGlobalValue(Status, 'connect_delay',
+                    registry.Integer(15, '''Number of seconds to wait before announcing a new status when connecting to the IRC server. This is the number of seconds to wait from startup not after joining channels.'''))
 
 # state cache
 conf.registerGlobalValue(Status, 'message_default',  registry.String('no status yet', '''Default status message'''))
