@@ -14,6 +14,7 @@ import datetime
 import update
 import logging
 from update import debug, info, warn, error, critical
+from include import CatchAllExceptions
 
 logger = logging.getLogger()
 logger.setLevel(logging.WARN)
@@ -40,6 +41,7 @@ class StatusHandler(threading.Thread):
 		pass
         debug('StatusHandler.run: waiting for a few seconds while i join a channel')
 	timer = 0
+	# time.sleep() seems to do something funny in threads so i'm keeping it to 1 second at a time
 	while timer < (self.registryValue('connect_delay') or 10):
 		timer += 1
 		time.sleep(1)
@@ -69,8 +71,8 @@ class StatusHandler(threading.Thread):
 		# Sleep for a few seconds so we don't go nuts on the processor and http server.
                 time.sleep(self.registryValue('interval'))
 		debug('StatusHandler.run: slept for %d seconds' % self.registryValue('interval'))
-            except BaseException as e:
-	        error('StatusHandler.run: error', repr(e))
+            except CatchAllExceptions as e:
+	        error('StatusHandler.run: error', e)
                 ircmsgs.error('Exception: %s' % repr(e))
 
     def _notify_channels(self):

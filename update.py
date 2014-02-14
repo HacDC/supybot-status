@@ -122,7 +122,7 @@ class Updater:
             if reply.getcode() == 200:
 	        debug('Updater._fetch_data: reply is good')
                 return reply.read()
-	except URLError as e:
+	except urllib2.URLError as e:
 	    warn(repr(e))
 	return None
 
@@ -279,7 +279,7 @@ class Status:
 	@param	other	Another instance of Status.
 	@return		True if Status.info.get(Status.state_field) is the same for both instances, otherwise False.
 	'''
-        return self.info.get(self.state_field) == other.info.get(state_field)
+        return self.info.get(self.state_field) == other.info.get(self.state_field)
 
     def __ne__(self, other):
 	''' Test if the state of this status is a different value from the other state
