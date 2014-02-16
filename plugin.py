@@ -15,13 +15,15 @@ import update
 import logging
 from update import debug, info, warn, error, critical
 from include import CatchAllExceptions
+from alien import get_alien_status
 import random
 random.seed()
 
 logger = logging.getLogger()
 logger.setLevel(logging.WARN)
 
-alien_char = "\xf0\x9f\x91\xbe"
+alien_char = [u'\u1d0003']
+
 
 class StatusHandler(threading.Thread):
     # Updater instance
@@ -173,8 +175,8 @@ class Status(callbacks.Plugin):
             message_format = 'default'
         formats = {'default':self.registryValue('message_default'),
             'human':self.registryValue('message_human'),
-            'raw':self.registryValue('message_raw')
-	    'alien':''.join([alien_char] * random.randint(1,30))}
+            'raw':self.registryValue('message_raw'),
+	    'alien':get_alien_status() }
         if message_format not in formats:
             irc.error('''"%s", %s''' % (message_format, ''''%s' is not a valid format. Valid formats are: default, human, raw''' % message_format))
         else:
