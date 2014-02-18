@@ -137,8 +137,6 @@ class Status(callbacks.Plugin):
 	status - display the status in a given format (default is 'default')
 	updates - manage whether this bot will announce changes in a channel.
 	sensordata - manage the data available to the bot.
-	'''
-	'''
 	@param	irc	supybot IrcMsg instance (from supybot/src/ircmsgs.py).
 	'''
         self.__parent = super(Status, self)
@@ -162,6 +160,10 @@ class Status(callbacks.Plugin):
 	''' [default|human|raw] 
 
 	Display the status of the space in a given format (default is 'default').
+        @param  irc     	supybot IrcMsg instance (from supybot/src/ircmsgs.py).
+	@param	msg		supybot ...
+	@param	args		arguments on the line
+	@param	message_format	message format argument
 	'''
         if not message_format:
             message_format = 'default'
@@ -178,6 +180,11 @@ class Status(callbacks.Plugin):
         ''' <on|off>
 
 	Turn updates on or off in the current channel.
+        @param  irc             supybot IrcMsg instance (from supybot/src/ircmsgs.py).
+        @param  msg             supybot ...
+        @param  args            arguments on the line
+        @param  channel  	channel argument
+        @param  state		state argument
 	'''
         qchannels = self.registryValue('quiet_channels')
         if state is None:
@@ -202,6 +209,10 @@ class Status(callbacks.Plugin):
 
 	Manage sensor data.
 	reload - forces a reload of the sensor data from the remote source.
+        @param  irc     supybot IrcMsg instance (from supybot/src/ircmsgs.py).
+        @param  msg     supybot ...
+        @param  args    arguments on the line
+        @param  action	action argument
 	'''
         if action == 'reload':
             self.status_handler.initialize_status(force=True)
