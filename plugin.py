@@ -12,21 +12,10 @@ import time
 import _strptime # required to prevent import errors
 import datetime
 import update
-import logging
-from update import debug, info, warn, error, critical
+from log import debug, info, warn, error, critical, exception
 from include import CatchAllExceptions
 from alien import get_alien_status
-import random
-random.seed()
 
-logger = logging.getLogger()
-logger.setLevel(logging.WARN)
-
-alien_char = [u'\u1d0003']
-
-
-logger = logging.getLogger()
-logger.setLevel(logging.WARN)
 
 class StatusHandler(threading.Thread):
     # Updater instance

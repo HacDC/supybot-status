@@ -2,7 +2,7 @@
 import urllib2
 
 plugin_name = 'Status'
-
+default_msg = 'HacDC is %s since %s'
 # tuple of exceptions which should be caught in the update loop
 CatchAllExceptions = (ZeroDivisionError,urllib2.URLError, IOError, urllib2.HTTPError)
 

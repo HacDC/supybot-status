@@ -8,10 +8,8 @@ import _strptime # required to avoid import errors
 import datetime
 import sys
 import urllib2
-import logging
-
-logger = logging.getLogger()
-logger.setLevel(logging.WARN)
+import include
+from log import debug, info, warn, error, critical, exception
 
 conf = {'source_url': None}
 
@@ -27,31 +25,6 @@ def set_EDT():
     ''' Set the current timezone to EST/EDT '''
     set_TZ('US/Eastern')
 
-''' Temporary Logging utils '''
-def log_fmt(*args):
-    ''' Conditionally print text to STDOUT '''
-    return ' '.join([str(x) for x in args])
-
-def debug(*args):
-    if logger.isEnabledFor(logging.DEBUG):
-        print('DEBUG: '+log_fmt(*args))
-
-def info(*args):
-    if logger.isEnabledFor(logging.INFO):
-        print('INFO: '+log_fmt(*args))
-
-def warn(*args):
-    if logger.isEnabledFor(logging.WARN):
-        print('WARN: '+log_fmt(*args))
-
-def error(*args):
-    if logger.isEnabledFor(logging.ERROR):
-        print('ERROR: '+log_fmt(*args))
-
-def critical(*args):
-    if logger.isEnabledFor(logging.CRITICAL):
-       print('CRITICAL: '+log_fmt(*args))
-        
 class Updater:
     ''' Update the bot from a remote status source '''
 
@@ -81,14 +54,13 @@ class Updater:
 	info('Updater.check: checking')
 	# get the Status for the latest sensor upload
         self.get_status()
-	info('Updater.check: got status')
         debug('Updater.check: self.status:', repr(self.status), '\nself.last_status:', repr(self.last_status))
 	# Test if the Status is a newer status than the last one fetched
         if self.is_new_status():
             info('Updater.check: new status')
 	    # if it is then return the messages for use by the bot
             return self.status.message
-	info('Updater.check: old status')
+	debug('Updater.check: old status')
         return None
 
     def get_status(self):
@@ -105,8 +77,8 @@ class Updater:
 	    # and update the values with the resulting Status object
             self.last_status = self.status
             self.status = status
-            debug('Updater.get_status.status(parsed):', str(self.status.__dict__))
-	info('Updater.get_status: done')
+            debug('Updater.get_status.status(parsed):', str(self.status))
+	debug('Updater.get_status: done')
 
     def _fetch_data(self):
 	''' Grab the sensor data from the sensor upload url
@@ -117,13 +89,13 @@ class Updater:
 	    # fetch raw data from the server
 	    request = urllib2.Request(url=self.source)
             reply = urllib2.urlopen(request)
-	    debug('Updater._fetch_data.reply:', str(reply.__dict__))
+	    debug('Updater._fetch_data.reply:', str(reply))
 	    # if the http code indicates a successful request extract the data from the reply
             if reply.getcode() == 200:
 	        debug('Updater._fetch_data: reply is good')
                 return reply.read()
 	except urllib2.URLError as e:
-	    warn(repr(e))
+	    warn('Updater._fetch_data: ',e)
 	return None
 
     def is_new_status(self):
@@ -196,6 +168,9 @@ class Sensor:
 	'''
         return {'id': self.id, 'label': self.label, 'boolean': self.boolean}
 
+    def __str__(self):
+	return '{%s:%s, %s:%s, %s:%s}' % ('id', self.id, 'label', self.label, 'boolean', self.boolean)
+
     def __eq__(self, other):
         ''' Test equality of the state of two sensors 
 	@return		True if values of respective self.boolean are equal, otherwise False.
@@ -226,7 +201,7 @@ class Status:
         self.source_string = source_string
 	# Populate the messages in the message.
         self._set_message()
-        debug('Status.sensors', ', '.join(['%s: %s' % (k, repr(v.__dict__)) for k,v in self.sensors.items()]))
+        debug('Status.sensors', ', '.join(['%s: %s' % (k, str(v)) for k,v in self.sensors.items()]))
 
     def _sensor_status(self):
         ''' Return a human friendly string representing the status of all the sensors '''
@@ -249,7 +224,7 @@ class Status:
             date = self.time_changed.strftime('%I:%M%p %A %d %b')
         else:
             date = 'date unknown'
-        self.message['default'] = 'HacDC is %s since %s' % ({True:'open', False:'closed'}[self.info.get('lights').boolean], date)
+        self.message['default'] = include.default_msg % ({True:'open', False:'closed'}[self.info.get('lights').boolean], date)
 
     def _set_human_message(self):
         ''' Set the human friendly message to a more verbose readout of the status.
@@ -273,6 +248,9 @@ class Status:
 		'sensors': dict((k, v.__dict__) for k,v in self.sensors.items()), 
 		'info': self.info,
 		'source_string':self.source_string}
+
+    def __str__(self):
+	 return '{%s: %s, %s: %s, %s: %s, %s: %s, %s: %s}' % ('time_changed', self.time_changed, 'message', self.message, 'sensors', dict((k, v.__dict__) for k,v in self.sensors.items()), 'info', self.info, 'source_string', self.source_string)
 
     def __eq__(self, other):
         ''' Test if the state of this status is the same value as the other state.
@@ -436,7 +414,7 @@ class StatusParser:
             self.last_changed_date = datetime.datetime.strptime(date_string, self._date_format).replace(year=datetime.datetime.now().year)
             debug('StatusParser._parse_date.last_changed_date:', repr(self.last_changed_date))
 	except Exception as e:
-            error(repr(e))
+            error(e)
 	    self.last_changed_date = None
 
     def parse_status(self, status_string=None):
