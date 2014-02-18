@@ -138,6 +138,8 @@ class Status(callbacks.Plugin):
 	updates - manage whether this bot will announce changes in a channel.
 	sensordata - manage the data available to the bot.
 	@param	irc	supybot IrcMsg instance (from supybot/src/ircmsgs.py).
+        @param  msg             supybot ...???
+        @param  args            irc message line as array?
 	'''
         self.__parent = super(Status, self)
         self.__parent.__init__(irc)
@@ -161,8 +163,8 @@ class Status(callbacks.Plugin):
 
 	Display the status of the space in a given format (default is 'default').
         @param  irc     	supybot IrcMsg instance (from supybot/src/ircmsgs.py).
-	@param	msg		supybot ...
-	@param	args		arguments on the line
+	@param	msg		supybot ...???
+	@param	args		irc message line as array?
 	@param	message_format	message format argument
 	'''
         if not message_format:
@@ -172,7 +174,7 @@ class Status(callbacks.Plugin):
             'raw':self.registryValue('message_raw'),
 	    'alien':get_alien_status() }
         if message_format not in formats:
-            irc.error('''"%s", %s''' % (message_format, ''''%s' is not a valid format. Valid formats are: default, human, raw''' % message_format))
+	    irc.reply('''I'm sorry %s, I can't do that.''' % args[0])
         else:
             irc.reply("%s" % formats.get(message_format) or 'No status is available yet.')
 
@@ -181,8 +183,8 @@ class Status(callbacks.Plugin):
 
 	Turn updates on or off in the current channel.
         @param  irc             supybot IrcMsg instance (from supybot/src/ircmsgs.py).
-        @param  msg             supybot ...
-        @param  args            arguments on the line
+        @param  msg             supybot ...???
+        @param  args            irc message line as array?
         @param  channel  	channel argument
         @param  state		state argument
 	'''
@@ -210,8 +212,8 @@ class Status(callbacks.Plugin):
 	Manage sensor data.
 	reload - forces a reload of the sensor data from the remote source.
         @param  irc     supybot IrcMsg instance (from supybot/src/ircmsgs.py).
-        @param  msg     supybot ...
-        @param  args    arguments on the line
+        @param  msg             supybot ...???
+        @param  args            irc message line as array?
         @param  action	action argument
 	'''
         if action == 'reload':
