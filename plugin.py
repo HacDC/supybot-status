@@ -158,15 +158,24 @@ class Status(callbacks.Plugin):
 	# Start the Status_handler
         self.status_handler.start()
 
+    def __debug_callback_args(self, *args,**kwargs):
+	args_l = [str(x) for x in args] + ['%s:%s' % (x,y) for x,y in kwargs.items()]
+        debug('command callback arguments:', *args_l)
+
     def status(self, irc, msg, args, message_format):
 	''' [default|human|raw] 
 
 	Display the status of the space in a given format (default is 'default').
-        @param  irc     	supybot IrcMsg instance (from supybot/src/ircmsgs.py).
-	@param	msg		supybot ...???
-	@param	args		irc message line as array?
+	{'irc': '<supybot.callbacks.NestedCommandsIrcProxy object at 0xa26e1ec>',
+	'msg': IrcMsg(prefix="nick!~username@host", command="PRIVMSG", args=('#HacDC', '.space')),
+	'args': '[]', 
+	'message_format': 'None'}
+        @param  irc     	supybot ...
+	@param	msg		supybot IrcMsg instance (from supybot/src/ircmsgs.py).
+	@param	args		command arguments as an array
 	@param	message_format	message format argument
 	'''
+        self.__debug_callback_args(irc=irc, msg=msg, args=args, message_format=message_format)
         if not message_format:
             message_format = 'default'
         formats = {'default':self.registryValue('message_default'),
@@ -174,7 +183,8 @@ class Status(callbacks.Plugin):
             'raw':self.registryValue('message_raw'),
 	    'alien':get_alien_status() }
         if message_format not in formats:
-	    irc.reply('''I'm sorry %s, I can't do that.''' % args[0])
+	    nick = msg.prefix.split('!',1)[0].strip(':')
+	    irc.reply('''I'm sorry %s. I'm afraid I can't do that.''' % nick)
         else:
             irc.reply("%s" % formats.get(message_format) or 'No status is available yet.')
 
@@ -188,6 +198,7 @@ class Status(callbacks.Plugin):
         @param  channel  	channel argument
         @param  state		state argument
 	'''
+        self.__debug_callback_args(irc=irc, msg=msg, args=args, channel=channel, state=state)
         qchannels = self.registryValue('quiet_channels')
         if state is None:
 	    if channel in self.registryValue('quiet_channels'):
@@ -216,12 +227,13 @@ class Status(callbacks.Plugin):
         @param  args            irc message line as array?
         @param  action	action argument
 	'''
+        self.__debug_callback_args(irc=irc, msg=msg, args=args, action=action)
         if action == 'reload':
             self.status_handler.initialize_status(force=True)
             irc.reply('Forcing update of all sensor data')
     
     # wrap methods for use as commands
-    updates = wrap(updates, ['inChannel', optional('boolean')])
+    updates = wrap(updates, ['inChannel', 'admin', optional('boolean')])
     status = wrap(status, [optional('text')])
     sensordata = wrap(sensordata, ['text'])
 
