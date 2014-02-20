@@ -105,9 +105,9 @@ class Updater:
 	# If both the current and previous statuses exist check if the current is different from the pervious
         if self.status and self.last_status and self.status.time_changed and self.last_status.time_changed:
             debug('Updater.is_new_status: both statuses exist')
-            if self.status > self.last_status and self.status != self.last_status:
-        	# if the new status is newer than the last status found it's new <_<
-	        # and if they are not equal there has been a status change
+            if self.status >= self.last_status and self.status != self.last_status:
+        	# if the new status is newer than or the same age as the last status found
+	        # and if they are not equal there has been a status change it's new
                 debug('Updater.is_new_status: new status')
                 return True
             elif self._first_run:
@@ -264,7 +264,7 @@ class Status:
 	@param	other	Another instance of Status.
 	@return         False if Status.info.get(Status.state_field) is the same for both instances, otherwise True.
 	'''
-        return self.__eq__(other)
+        return not self.__eq__(other)
 
     ''' The following test the time the status was updated rather than the value '''
 
