@@ -9,6 +9,7 @@ import datetime
 import sys
 import urllib2
 import include
+from include import StatusPluginException
 from log import debug, info, warn, error, critical, exception
 
 conf = {'source_url': None}
@@ -36,6 +37,8 @@ class Updater:
         self.source = conf.get('source_url') or self.__missing_url_config()
 	# The number of seconds to sleep at the end of each loop
         self.interval_s = conf.get('interval_s')
+	# socket timeout in seconds
+	self.timeout = 30
 	# The Status retrived before the most recent Status
         self.last_status = None
 	# The most recent Status retrived
@@ -45,7 +48,7 @@ class Updater:
 
     def __missing_url_config(self):
 	''' freak out if there is no url to get data from '''
-        raise Exception('Missing source_url configuration value')
+        raise StatusPluginException('Missing source_url configuration value')
 
     def check(self):
         ''' Get the latest status, test if it's new, update the bot if it is, and sleep so we don't go too fast. 
@@ -80,15 +83,18 @@ class Updater:
             debug('Updater.get_status.status(parsed):', str(self.status))
 	debug('Updater.get_status: done')
 
-    def _fetch_data(self):
+    def _fetch_data(self, count=0):
 	''' Grab the sensor data from the sensor upload url
+	@param	count		the number of levels of recursion
 	@return			status data string if available otherwise return None
 	'''
+	if count >= 3:
+	    raise StatusPluginException('''Can't connect to %s''' % self.source)
 	debug('Updater._fetch_data.source:', self.source)
 	try:
 	    # fetch raw data from the server
 	    request = urllib2.Request(url=self.source)
-            reply = urllib2.urlopen(request)
+            reply = urllib2.urlopen(request, timeout=self.timeout)
 	    debug('Updater._fetch_data.reply:', str(reply))
 	    # if the http code indicates a successful request extract the data from the reply
             if reply.getcode() == 200:
@@ -96,6 +102,9 @@ class Updater:
                 return reply.read()
 	except urllib2.URLError as e:
 	    warn('Updater._fetch_data: ',e)
+	    if hasattr(e, 'reason') and str(e.reason).strip() == 'timed out':
+	        time.sleep(3)
+		return self._fetch_data(count+1)
 	return None
 
     def is_new_status(self):
@@ -119,6 +128,7 @@ class Updater:
                 return True
         debug('Updater.is_new_status: old status')
         return False
+
 
 class Sensor:
     ''' Stores the state of a sensor '''
@@ -195,7 +205,7 @@ class Status:
         debug('Status(sensors)', *([str(x) for x in sensors]))
         self.time_changed = time_changed
 	# Set a bare message dict
-	self.message = {'raw':None, 'human':None, 'default':None, 'changed':None}
+	self.message = {'raw':None, 'human':None, 'default':None, 'changed':None, 'time_fetched':0}
         self.info = info
         self.sensors = sensors
         self.source_string = source_string
@@ -237,6 +247,10 @@ class Status:
 	Sets value for 'raw' in Status.message.
 	'''
         self.message['raw'] = self.source_string
+
+    def _set_time_fetched(self):
+	''' Set the time this object was created (which should be the time it was fetched) '''
+	self.message['time_fetched'] = int(time.mktime(time.gmtime()) or 0)
 
     def __dict__(self):
         ''' Return a representation of this instance as a dict.

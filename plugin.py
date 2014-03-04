@@ -17,6 +17,9 @@ from include import CatchAllExceptions
 from alien import get_alien_status
 
 
+def min_to_sec(minutes=0):
+    return 60*60*minutes
+
 class StatusHandler(threading.Thread):
     # Updater instance
     updater = None
@@ -43,7 +46,7 @@ class StatusHandler(threading.Thread):
 	while timer < (self.registryValue('connect_delay') or 10):
 		timer += 1
 		time.sleep(1)
-        debug('StatusHandler.run: i  hope i joined a channel ... continuing')
+        debug('StatusHandler.run: i  hope i joined a channel ... starting the loop and notifying channel of initial state')
 	# /me sings to the tune of 'the song that never ends'
 	# This is the loop that never ends ...
         while True:
@@ -104,7 +107,8 @@ class StatusHandler(threading.Thread):
 	# Get the existing values in the cache.
         reg_vals = [self.registryValue('message_default'),
                 self.registryValue('message_human'), 
-                self.registryValue('message_raw')]
+                self.registryValue('message_raw'),
+		self.registryValue('time_fetched')]
         debug('StatusHandler._initialize_status.reg_vals:', str(reg_vals))
 	# If any cached values are not set or we are forcing an update.
         if (None in reg_vals or '' in [str(x).strip() for x in reg_vals]) or force:
@@ -124,6 +128,7 @@ class StatusHandler(threading.Thread):
         self.setRegistryValue('message_default', message['default'] or no_status_message)
         self.setRegistryValue('message_human', message['human'] or no_status_message)
         self.setRegistryValue('message_raw', message['raw'] or no_status_message)
+	self.setRegistryValue('time_fetched', message['time_fetched'] or 0)
 
 class Status(callbacks.Plugin):
     '''This plugin checks an http server for updates and announces changes an IRC channel.'''
@@ -133,13 +138,12 @@ class Status(callbacks.Plugin):
     def __init__(self, irc):
 	''' <status|updates|sensordata>
 	
-	Retrieve and display the status the Occupancy Sensor.
+	Query occupancy sensor status.
 	status - display the status in a given format (default is 'default')
 	updates - manage whether this bot will announce changes in a channel.
 	sensordata - manage the data available to the bot.
+
 	@param	irc	supybot IrcMsg instance (from supybot/src/ircmsgs.py).
-        @param  msg             supybot ...???
-        @param  args            irc message line as array?
 	'''
         self.__parent = super(Status, self)
         self.__parent.__init__(irc)
@@ -165,12 +169,22 @@ class Status(callbacks.Plugin):
     def status(self, irc, msg, args, message_format):
 	''' [default|human|raw] 
 
-	Display the status of the space in a given format (default is 'default').
-	{'irc': '<supybot.callbacks.NestedCommandsIrcProxy object at 0xa26e1ec>',
-	'msg': IrcMsg(prefix="nick!~username@host", command="PRIVMSG", args=('#HacDC', '.space')),
-	'args': '[]', 
-	'message_format': 'None'}
-        @param  irc     	supybot ...
+	Display the status of the space in a given format (default is 'default' ... who'da thunk).
+	default - as seen in the automatic status change notifications
+	human - a human friendly representation of the state of individual sensors
+	raw - the verbatim string retrived from the sensor's upload
+
+	# method arguments as dict for reference
+	# {'irc': '<supybot.callbacks.NestedCommandsIrcProxy object at 0xa26e1ec>',
+	# 'msg': IrcMsg(
+	#	prefix="nick!~username@host",
+	# 	command='PRIVMSG',
+	# 	args=('#HacDC', '.space')
+	# 	),
+	# 'args': [], 
+	# 'message_format': None}
+
+        @param  irc     	supybot supybot.callbacks.NestedCommandsIrcProxy
 	@param	msg		supybot IrcMsg instance (from supybot/src/ircmsgs.py).
 	@param	args		command arguments as an array
 	@param	message_format	message format argument
@@ -186,14 +200,20 @@ class Status(callbacks.Plugin):
 	    nick = msg.prefix.split('!',1)[0].strip(':')
 	    irc.reply('''I'm sorry %s. I'm afraid I can't do that.''' % nick)
         else:
+	    if time.mktime(time.gmtime())-self.registryValue('time_fetched') > self.registryValue('max_status_age'):
+		self.status_handler.initialize_status(force=True)
+		debug('Fetching fresh status ')
             irc.reply("%s" % formats.get(message_format) or 'No status is available yet.')
 
     def updates(self, irc, msg, args, channel, state):
         ''' <on|off>
 
 	Turn updates on or off in the current channel.
-        @param  irc             supybot IrcMsg instance (from supybot/src/ircmsgs.py).
-        @param  msg             supybot ...???
+	on - enable automatic status change notifications
+	off - disable automatic status change notifications
+
+        @param  irc             supybot supybot.callbacks.NestedCommandsIrcProxy
+        @param  msg             supybot IrcMsg instance (from supybot/src/ircmsgs.py)
         @param  args            irc message line as array?
         @param  channel  	channel argument
         @param  state		state argument
@@ -222,9 +242,10 @@ class Status(callbacks.Plugin):
 
 	Manage sensor data.
 	reload - forces a reload of the sensor data from the remote source.
-        @param  irc     supybot IrcMsg instance (from supybot/src/ircmsgs.py).
-        @param  msg             supybot ...???
-        @param  args            irc message line as array?
+
+        @param  irc     supybot supybot.callbacks.NestedCommandsIrcProxy
+        @param  msg	supybot IrcMsg instance (from supybot/src/ircmsgs.py)
+        @param  args    irc message line as array?
         @param  action	action argument
 	'''
         self.__debug_callback_args(irc=irc, msg=msg, args=args, action=action)

@@ -14,13 +14,13 @@ conf.registerGlobalValue(Status, 'use_notice',
     registry.Boolean(False, '''Use notices instead of privmsgs'''))
 
 conf.registerGlobalValue(Status, 'source_url',
-        registry.String('http://api.hacdc.org/OccSensor.txt', '''Source to check for updates'''))
+        registry.String('http://api.hacdc.org/OccSensor.txt', '''Source to check for updates.'''))
 
 conf.registerGlobalValue(Status, 'quiet_channels',
                             registry.SpaceSeparatedListOfStrings(' #hacdcbot2 ', '''Channels to not announce changes in.'''))
 
 conf.registerGlobalValue(Status, 'debug_channel',
-                    registry.String('#hacdcbot', ''''''))
+                    registry.String('#hacdcbot', '''Channel to print debug info to.'''))
 
 conf.registerGlobalValue(Status, 'interval',
                     registry.Integer(3, '''Interval to check remote status in seconds'''))
@@ -28,11 +28,15 @@ conf.registerGlobalValue(Status, 'interval',
 conf.registerGlobalValue(Status, 'connect_delay',
                     registry.Integer(15, '''Number of seconds to wait before announcing a new status when connecting to the IRC server. This is the number of seconds to wait from startup not after joining channels.'''))
 
+conf.registerGlobalValue(Status, 'max_status_age',
+                    registry.Integer(30, '''Maximum age of the cached status in minutes. The status will be fetched before replying to the status command if it is older than this.'''))
+
 # state cache
 conf.registerGlobalValue(Status, 'message_default',  registry.String('no status yet', '''Default status message'''))
 conf.registerGlobalValue(Status, 'message_human',  registry.String('no status yet', '''More verbose human readable status message'''))
 conf.registerGlobalValue(Status, 'message_raw',  registry.String('no status yet', '''Status message as it comes from the sensor'''))
+conf.registerGlobalValue(Status, 'time_fetched',
+                    registry.Integer(0, '''Unix timestamp of the time of the most recently fetched status'''))
 
 
 # vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:
-
