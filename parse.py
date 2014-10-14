@@ -4,6 +4,7 @@ __license__ = 'GPLv3'
 
 import _strptime # required to avoid import errors
 import datetime
+from sensor import *
 import include
 from include import StatusPluginException
 from log import debug, info, warn, error, critical, exception
@@ -67,7 +68,7 @@ class MirageStatusParser(StatusParser):
 	'''
 	@param	status_string	The contents of the sensor status upload
 	'''
-        StatusParser.__init__(status_string=status_string, **configs)
+        StatusParser.__init__(self, status_string=status_string, **configs)
 	# All the values collected from the status_string.
 	self.collected_values = {}
 	# dict of label->Sensor's to stash the values found

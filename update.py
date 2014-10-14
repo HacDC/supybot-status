@@ -6,6 +6,7 @@ import time
 import _strptime # required to avoid import errors
 import urllib2
 import include
+from parse import MirageStatusParser as StatusParser
 from include import StatusPluginException
 from log import debug, info, warn, error, critical, exception
 

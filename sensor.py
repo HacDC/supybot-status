@@ -74,7 +74,7 @@ class SensorStatus:
 
     state_field = 'lights' # key to retrive the overal state (open/closed) from Status.info
 
-    def __init__(self, time_changed, sensors, source_string, info):
+    def __init__(self, time_changed=None, sensors={}, source_string=None, info=None):
 	'''
 	@param	time_changed	The datatime instance with the date the sensor data was changed.
 	@param	sensors		A dict of Sensor instances.
@@ -88,8 +88,9 @@ class SensorStatus:
         self.info = info
         self.sensors = sensors
         self.source_string = source_string
-	# Populate the messages in the message.
-        self._set_message()
+        if time_changed and sensors and source_string and info: 
+	    # Populate the messages in the message.
+            self._set_message()
         debug('Status.sensors', ', '.join(['%s: %s' % (k, str(v)) for k,v in self.sensors.items()]))
 
     def _sensor_status(self):
