@@ -8,8 +8,9 @@ import urllib2
 import include
 from parse import MirageStatusParser as StatusParser
 from include import StatusPluginException
-from log import debug, info, warn, error, critical, exception
+from log import info, warn, error, critical, exception
 
+debug = info
 
 class Updater:
     ''' Update the bot from a remote status source '''
@@ -25,12 +26,6 @@ class Updater:
         self.interval_s = self.conf.get('interval_s')
 	# socket timeout in seconds
 	self.timeout = 30
-	# The Status retrived before the most recent Status
-        self.last_status = None
-	# The most recent Status retrived
-        self.status = None
-	# Token indicating if this is the first time through the loop
-        self._first_run = True
 
     def __missing_url_config(self):
 	''' freak out if there is no url to get data from '''
@@ -41,26 +36,16 @@ class Updater:
         return None if no change or self.status.message if there is a new status
         '''
 	info('Updater.check: checking')
-	# get the Status for the latest sensor upload
-        return self._get_status()
-
-    def _get_status(self):
-        ''' Grab the status from the sensor
-	Sets self.last_status and  self.status
-	'''
-        parser = StatusParser()	# get a new parser
-	status_string = self._fetch_data()	# grab the contents of the sensor upload
-	# if there is a response from the server
-        if status_string:
-            debug('Updater.get_status.status_string(from server):', status_string)
+        status_string = self._fetch_data()      # grab the contents of the sensor upload
+        debug('Updater.get_status.status_string(from server): %s' % status_string)
+	if status_string:
+	    parser = StatusParser()	# get a new parser
 	    # parse the response
             status = parser.get_status(status_string)
 	    # and update the values with the resulting Status object
-            self.last_status = self.status
-            self.status = status
-            debug('Updater.get_status.status(parsed):', str(self.status))
-            return self.status.message
-	debug('Updater.get_status: done')
+            debug('Updater.get_status.status(parsed): %s' % str(status))
+            return status.message
+	debug('Updater.get_status: no status found')
         return None
 
     def _fetch_data(self, count=0):
@@ -70,44 +55,21 @@ class Updater:
 	'''
 	if count >= 3:
 	    raise StatusPluginException('''Can't connect to %s''' % self.source)
-	debug('Updater._fetch_data.source:', self.source)
+	debug('Updater._fetch_data.source: %s' % self.source)
 	try:
 	    # fetch raw data from the server
 	    request = urllib2.Request(url=self.source)
             reply = urllib2.urlopen(request, timeout=self.timeout)
-	    debug('Updater._fetch_data.reply:', str(reply))
+	    debug('Updater._fetch_data.reply: %s' % str(reply))
 	    # if the http code indicates a successful request extract the data from the reply
             if reply.getcode() == 200:
 	        debug('Updater._fetch_data: reply is good')
                 return reply.read()
 	except urllib2.URLError as e:
-	    warn('Updater._fetch_data: ',e)
+	    warn('Updater._fetch_data: %s' % str(e))
 	    if hasattr(e, 'reason') and str(e.reason).strip() == 'timed out':
 	        time.sleep(3)
 		return self._fetch_data(count+1)
 	return None
-
-    def _is_new_status(self):
-        ''' Test if the most recently grabbed status is newer than the last one 
-	@return			True if status has changed or False if it has not.
-	'''
-	# If both the current and previous statuses exist check if the current is different from the pervious
-        if self.status and self.last_status and self.status.time_changed and self.last_status.time_changed:
-            debug('Updater.is_new_status: both statuses exist')
-            if self.status >= self.last_status and self.status != self.last_status:
-        	# if the new status is newer than or the same age as the last status found
-	        # and if they are not equal there has been a status change it's new
-                debug('Updater.is_new_status: new status')
-                return True
-            elif self._first_run:
-		# if this is the first run on start up pretend this is a new 
-		# status so we notify of the current status
-		debug('Updater.is_new_status: first run')
-		# make sure we don't think subsequent runs are the first
-                self._first_run = False
-                return True
-        debug('Updater.is_new_status: old status')
-        return False
-
 
 # vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:

@@ -14,6 +14,8 @@ from log import debug, info, warn, error, critical, exception
 from include import CatchAllExceptions
 from alien import get_alien_status
 
+debug = info
+
 class StatusHandler(threading.Thread):
 
     def __init__(self, registry, updater, lock, **conf):
@@ -44,14 +46,14 @@ class StatusHandler(threading.Thread):
                 if message:
 		    debug('StatusHandler.run: got a message')
 		    # Update the status cache (bot config values).
-                    self.reg.setall(Record(**message))
+                    self.reg.setall(message)
 		    debug('StatusHandler.run: updated registry')
 		debug('StatusHandler.run.interval', str(self.conf.get('interval', 30)))
 		# Sleep for a few seconds so we don't go nuts on the processor and http server.
                 time.sleep(float(self.conf.get('interval', 30)))
 		debug('StatusHandler.run: slept for %d seconds' % self.conf.get('interval', 30))
             except CatchAllExceptions as e:
-	        error('StatusHandler.run: error', e)
+		error('StatusHandler.run: error', e)
 
 
 class Registry:
@@ -61,66 +63,66 @@ class Registry:
         self.lock = lock
 
     def acquire(self):
-        while not self.lock.acquire():
-            time.sleep(0.1)
+	''' block while waiting to acquire thread lock '''
+	debug('aquiring thread lock')
+        while not self.lock.acquire(True): 
+            pass
 
     def release(self):
+        '''  '''
+	debug('releasing thread lock')
         self.lock.release()
 
     def get(self, key, default=None):
+        '''  '''
+	value = None
+	# acquire lock
         self.acquire()
+	# try to retrieve the value
         try:
+            # retrieve the value or use the default
             value = self.reg.registryValue(key) or default
-            return value
         finally:
+            # be sure to release the lock
             self.release()
+        debug('got: "%s" as "%s"' % (key, value))
+	return value
 
     def update(self, key, value):
+        '''  '''
+        # block while aquiring lock
         self.acquire()
+	# try to set the value
         try:
             self.reg.setRegistryValue(key, value)
+            debug('set: "%s" to "%s"' % (key, value))
         finally:
+            # be sure to release the lock
             self.release()
 
 
 class StatusRegistry(Registry):
 
-    status_keys = {'message_default':'default', 'message_human':'human', 'message_raw':'raw', 'time_fetched':'time_fetched'}
+    status_keys = {'default':'message_default', 'human':'message_human', 'raw':'message_raw', 'time_fetched':'time_fetched'}
 
     def getall(self):
-	# Get the existing values in the cache.
-        msg_list = [(x,self.get(x)) for x in self.status_keys]
+	''' Get the existing values in the cache. '''
+        msg_list = [(x,self.get(y)) for x,y in self.status_keys.items()]
         msg = dict(msg_list)
-        rec = Record(**msg)
+	debug('got from registry: %s' % str(msg))
+	return msg
 
     def setall(self, message=None):
 	''' Update the cached status values 
-	@param  message     The status message in the form of a Record object.
+	@param  message     The status message dict.
 	'''
-	debug('StatusRegistry: updating cached values')
+	debug('StatusRegistry: updating cached values: %s' % str(message))
 	# Set the message to cache if there is no message in the message dict.
         notset = 'No status available yet.'
 	# Set the values of the messages in the cache with their counterparts in the message dict.
-        existing_rec = self.getall()
-        if not message or not existing_rec or message == existing_rec: return None
-        for key, val in dict(message).items():
-            self.update(key, message.get(val))
-
-class Record:
-    def __init__(self, **msgs):
-        self.msg = {'message_default': msgs.get('default'),
-                'message_human':msgs.get('human'),
-                'message_raw':msgs.get('raw'),
-                'time_fetched':msgs.get('time_fetched')}
-
-    def __eq__(self, peer):
-        if not peer: return False
-        for field in [x for x in self.msg if x != 'time_fetched']:
-            if peer.get(field) != self.msg.get(field): return False
-        return True
-
-    def __dict__(self):
-        return self.msg
+	if message:
+            for key, val in self.status_keys.items():
+                self.update(val, message.get(key))
 
 class Status(callbacks.Plugin):
     '''This plugin checks an http server for updates and announces changes an IRC channel.'''
@@ -160,13 +162,13 @@ class Status(callbacks.Plugin):
 	# {'irc': '<supybot.callbacks.NestedCommandsIrcProxy object at 0xa26e1ec>',
 	# 'msg': IrcMsg(
 	#	prefix="nick!~username@host",
-	# 	command='PRIVMSG',
-	# 	args=('#HacDC', '.space')
-	# 	),
+	#	command='PRIVMSG',
+	#	args=('#HacDC', '.space')
+	#	),
 	# 'args': [], 
 	# 'message_format': None}
 
-        @param  irc     	supybot supybot.callbacks.NestedCommandsIrcProxy
+        @param  irc		supybot supybot.callbacks.NestedCommandsIrcProxy
 	@param	msg		supybot IrcMsg instance (from supybot/src/ircmsgs.py).
 	@param	args		command arguments as an array
 	@param	message_format	message format argument
@@ -174,15 +176,15 @@ class Status(callbacks.Plugin):
         self.__debug_callback_args(irc=irc, msg=msg, args=args, message_format=message_format)
         if not message_format:
             message_format = 'default'
-        formats = {'alien':get_alien_status()}
+        formats = {'alien':get_alien_status(), 'default':'', 'human':'', 'raw':''}
         msgs = self.reg.getall()
         if msgs:
-            formats.update(dict(msgs))
+            formats.update(msgs)
         if message_format not in formats:
 	    nick = msg.prefix.split('!',1)[0].strip(':')
 	    irc.reply('''I'm sorry %s. I'm afraid I can't do that.''' % nick)
         else:
-	    if time.mktime(time.gmtime())-self.reg.get('time_fetched') > self.reg.get('max_status_age'):
+	    if time.mktime(time.gmtime())-self.reg.get('time_fetched',0) > self.reg.get('max_status_age'):
 		self.reg.setall()
             irc.reply("%s" % formats.get(message_format) or 'No status is available yet.')
 
@@ -196,7 +198,7 @@ class Status(callbacks.Plugin):
         @param  irc             supybot supybot.callbacks.NestedCommandsIrcProxy
         @param  msg             supybot IrcMsg instance (from supybot/src/ircmsgs.py)
         @param  args            irc message line as array?
-        @param  channel  	channel argument
+        @param  channel		channel argument
         @param  state		state argument
 	'''
         self.__debug_callback_args(irc=irc, msg=msg, args=args, channel=channel, state=state)
