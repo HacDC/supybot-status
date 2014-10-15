@@ -9,120 +9,11 @@ import supybot.ircmsgs as ircmsgs
 import threading
 import time
 import _strptime # required to prevent import errors
-import update
+from statushandler import StatusHandler
+from statusregistry import StatusRegistry
+from update import Updater
 from log import debug, info, warn, error, critical, exception
-from include import CatchAllExceptions
 from alien import get_alien_status
-
-debug = info
-
-class StatusHandler(threading.Thread):
-
-    def __init__(self, registry, updater, lock, **conf):
-        threading.Thread.__init__(self)
-        # Updater instance (retrieves status)
-        self.updater = updater
-        # configs passed as kwargs
-        self.conf = conf
-        # registry rw lock
-        self.lock = lock
-        self.reg = registry
-
-    def run(self):
-        debug('StatusHandler.run: waiting for a few seconds while i join a channel')
-	timer = 0
-        time.sleep(float(self.conf.get('connect_delay', 10)))
-        if not self.reg.getall():
-            self.reg.setall()
-	# /me sings to the tune of 'the song that never ends'
-	# This is the loop that never ends ...
-        while True:
-	    try:
-		debug('StatusHandler.run: checking for updates')
-		# Check for a new status.
-                message = self.updater.check()
-                debug('StatusHandler.run.message:', str(message))
-		# Check we have all the bits we need. and continue if we do.
-                if message:
-		    debug('StatusHandler.run: got a message')
-		    # Update the status cache (bot config values).
-                    self.reg.setall(message)
-		    debug('StatusHandler.run: updated registry')
-		debug('StatusHandler.run.interval', str(self.conf.get('interval', 30)))
-		# Sleep for a few seconds so we don't go nuts on the processor and http server.
-                time.sleep(float(self.conf.get('interval', 30)))
-		debug('StatusHandler.run: slept for %d seconds' % self.conf.get('interval', 30))
-            except CatchAllExceptions as e:
-		error('StatusHandler.run: error', e)
-
-
-class Registry:
-
-    def __init__(self, registry=None, lock=None):
-        self.reg = registry
-        self.lock = lock
-
-    def acquire(self):
-	''' block while waiting to acquire thread lock '''
-	debug('aquiring thread lock')
-        while not self.lock.acquire(True): 
-            pass
-
-    def release(self):
-        '''  '''
-	debug('releasing thread lock')
-        self.lock.release()
-
-    def get(self, key, default=None):
-        '''  '''
-	value = None
-	# acquire lock
-        self.acquire()
-	# try to retrieve the value
-        try:
-            # retrieve the value or use the default
-            value = self.reg.registryValue(key) or default
-        finally:
-            # be sure to release the lock
-            self.release()
-        debug('got: "%s" as "%s"' % (key, value))
-	return value
-
-    def update(self, key, value):
-        '''  '''
-        # block while aquiring lock
-        self.acquire()
-	# try to set the value
-        try:
-            self.reg.setRegistryValue(key, value)
-            debug('set: "%s" to "%s"' % (key, value))
-        finally:
-            # be sure to release the lock
-            self.release()
-
-
-class StatusRegistry(Registry):
-
-    status_keys = {'default':'message_default', 'human':'message_human', 'raw':'message_raw', 'time_fetched':'time_fetched'}
-
-    def getall(self):
-	''' Get the existing values in the cache. '''
-        msg_list = [(x,self.get(y)) for x,y in self.status_keys.items()]
-        msg = dict(msg_list)
-	debug('got from registry: %s' % str(msg))
-	return msg
-
-    def setall(self, message=None):
-	''' Update the cached status values 
-	@param  message     The status message dict.
-	'''
-	debug('StatusRegistry: updating cached values: %s' % str(message))
-	# Set the message to cache if there is no message in the message dict.
-        notset = 'No status available yet.'
-	# Set the values of the messages in the cache with their counterparts in the message dict.
-	if message:
-            for key, val in self.status_keys.items():
-                self.update(val, message.get(key))
 
 class Status(callbacks.Plugin):
     '''This plugin checks an http server for updates and announces changes an IRC channel.'''
@@ -143,7 +34,7 @@ class Status(callbacks.Plugin):
         self.lock = threading.Lock()
         self.reg = StatusRegistry(self, self.lock)
 	# StatusHandler thread instance
-        self.status_handler = StatusHandler(self.reg, update.Updater(source_url=self.reg.get('source_url')), self.lock)
+        self.status_handler = StatusHandler(self.reg, Updater(source_url=self.reg.get('source_url')), self.lock)
         self.status_handler.start()
 
     def __debug_callback_args(self, *args,**kwargs):

@@ -833,3 +833,5 @@ alien_alphabet = ['𝂠',
 
 def get_alien_status():
 	return ''.join(random.sample(alien_alphabet, random.randint(1,30)))
+
+# vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:

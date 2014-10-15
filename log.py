@@ -20,3 +20,5 @@ def critical(*args):
 
 def exception(*args):
 	logger.exception(*args, exc_info=True)
+
+# vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:

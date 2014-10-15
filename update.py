@@ -5,21 +5,20 @@ __license__ = 'GPLv3'
 import time
 import _strptime # required to avoid import errors
 import urllib2
-import include
-from parse import MirageStatusParser as StatusParser
+from mirageparse import MirageStatusParser as StatusParser
 from include import StatusPluginException
-from log import info, warn, error, critical, exception
-
-debug = info
+from log import debug, info, warn, error, critical, exception
 
 class Updater:
     ''' Update the bot from a remote status source '''
 
-    def __init__(self, last_status_string=None, **passed_conf):
-        global conf
+    def __init__(self, last_status_string=None, **conf):
+        ''' 
+        @param	last_status_string	previous status string to seed the process (optional)
+        @param	conf			keyword args configs
+        '''
 	# add the config values passed to our dict of configs
-        self.conf = {'source_url': None}
-        self.conf.update(passed_conf)
+        self.conf = conf
 	# The url to fetch the sensor data from
         self.source = self.conf.get('source_url') or self.__missing_url_config()
 	# The number of seconds to sleep at the end of each loop
@@ -28,12 +27,15 @@ class Updater:
 	self.timeout = 30
 
     def __missing_url_config(self):
-	''' freak out if there is no url to get data from '''
+	''' Freak out if there is no url to get data from
+        @returns	Bricks of shit
+	@raises		StatusPluginException
+        '''
         raise StatusPluginException('Missing source_url configuration value')
 
     def check(self):
         ''' Get the latest status, test if it's new, update the bot if it is, and sleep so we don't go too fast. 
-        return None if no change or self.status.message if there is a new status
+        @returns	Status.message (dict) if there is a downloaded status
         '''
 	info('Updater.check: checking')
         status_string = self._fetch_data()      # grab the contents of the sensor upload
@@ -50,24 +52,29 @@ class Updater:
 
     def _fetch_data(self, count=0):
 	''' Grab the sensor data from the sensor upload url
-	@param	count		the number of levels of recursion
-	@return			status data string if available otherwise return None
+	@param	count	The number of levels of recursion
+	@returns	Status data string if available otherwise return None
+	@raises		StatusPluginException if download failed too many times (3 tries max)
 	'''
 	if count >= 3:
 	    raise StatusPluginException('''Can't connect to %s''' % self.source)
 	debug('Updater._fetch_data.source: %s' % self.source)
+        # catch download errors
 	try:
 	    # fetch raw data from the server
 	    request = urllib2.Request(url=self.source)
             reply = urllib2.urlopen(request, timeout=self.timeout)
-	    debug('Updater._fetch_data.reply: %s' % str(reply))
+	    debug('Updater._fetch_data.reply: ', str(reply))
 	    # if the http code indicates a successful request extract the data from the reply
             if reply.getcode() == 200:
 	        debug('Updater._fetch_data: reply is good')
                 return reply.read()
 	except urllib2.URLError as e:
-	    warn('Updater._fetch_data: %s' % str(e))
+            # we failed to get the status
+	    warn('Updater._fetch_data: ', str(e))
+            # try again if it's only due to timeout
 	    if hasattr(e, 'reason') and str(e.reason).strip() == 'timed out':
+                # wait for the issue to hopefully clear
 	        time.sleep(3)
 		return self._fetch_data(count+1)
 	return None

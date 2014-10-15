@@ -68,3 +68,5 @@ depends on if anything in update.py might throw it without breaking anything.
 __builtin__.
 	IOError
 '''
+
+# vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:
