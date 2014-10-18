@@ -67,7 +67,11 @@ class Status(callbacks.Plugin):
         self.__debug_callback_args(irc=irc, msg=msg, args=args, message_format=message_format)
         if not message_format:
             message_format = 'default'
-        formats = {'alien':get_alien_status(), 'default':'', 'human':'', 'raw':''}
+        if self.reg.get('hunterkll_safe', False):
+            alien_msg = ''' it was swamp gas ... '''
+        else:
+            alien_msg = get_alien_status()
+        formats = {'alien':alien_msg, 'default':'', 'human':'', 'raw':''}
         msgs = self.reg.getall()
         if msgs:
             formats.update(msgs)

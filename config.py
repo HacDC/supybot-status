@@ -31,6 +31,9 @@ conf.registerGlobalValue(Status, 'connect_delay',
 conf.registerGlobalValue(Status, 'max_status_age',
                     registry.Integer(30, '''Maximum age of the cached status in minutes. The status will be fetched before replying to the status command if it is older than this.'''))
 
+conf.registerGlobalValue(Status, 'hunterkll_safe',
+                    registry.Boolean(False, '''Make the mean extended unicode go away T_T.'''))
+
 # state cache
 conf.registerGlobalValue(Status, 'message_default',  registry.String('no status yet', '''Default status message'''))
 conf.registerGlobalValue(Status, 'message_human',  registry.String('no status yet', '''More verbose human readable status message'''))
