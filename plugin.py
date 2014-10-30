@@ -34,7 +34,8 @@ class Status(callbacks.Plugin):
         self.lock = threading.Lock()
         self.reg = StatusRegistry(self, self.lock)
 	# StatusHandler thread instance
-        self.status_handler = StatusHandler(self.reg, Updater(source_url=self.reg.get('source_url')), self.lock)
+	updater = Updater(source_url=self.reg.get('source_url'))
+        self.status_handler = StatusHandler(self.reg, updater, self.lock)
         self.status_handler.start()
 
     def __debug_callback_args(self, *args,**kwargs):
