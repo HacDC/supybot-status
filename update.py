@@ -38,15 +38,15 @@ class Updater:
         @returns	Status.message (dict) if there is a downloaded status
         '''
 	info('Updater.check: checking')
-        status_string = self._fetch_data()      # grab the contents of the sensor upload
-        debug('Updater.get_status.status_string(from server): %s' % status_string)
+	status_string = self._fetch_data()      # grab the contents of the sensor upload
+	debug('Updater.get_status.status_string(from server): %s' % status_string)
 	if status_string:
 	    parser = StatusParser()	# get a new parser
 	    # parse the response
-            status = parser.get_status(status_string)
+	    status = parser.get_status(status_string)
 	    # and update the values with the resulting Status object
-            debug('Updater.get_status.status(parsed): %s' % str(status))
-            return status.message
+	    debug('Updater.get_status.status(parsed): %s' % str(status))
+	    return status.message
 	debug('Updater.get_status: no status found')
         return None
 
@@ -54,11 +54,11 @@ class Updater:
 	''' Grab the sensor data from the sensor upload url
 	@param	count	The number of levels of recursion
 	@returns	Status data string if available otherwise return None
-	@raises		StatusPluginException if download failed too many times (3 tries max)
 	'''
 	if count >= 3:
-	    raise StatusPluginException('''Can't connect to %s''' % self.source)
-	debug('Updater._fetch_data.source: %s' % self.source)
+	    error('''Can't connect to %s''', self.source)
+            return None
+	debug('Updater._fetch_data.source: %s', self.source)
         # catch download errors
 	try:
 	    # fetch raw data from the server
