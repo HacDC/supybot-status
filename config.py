@@ -34,6 +34,13 @@ conf.registerGlobalValue(Status, 'max_status_age',
 conf.registerGlobalValue(Status, 'hunterkll_safe',
                     registry.Boolean(False, '''Make the mean extended unicode go away T_T.'''))
 
+conf.registerGlobalValue(Status, 'parked',
+                    registry.Boolean(False, '''Display the parked_message instead of the status.'''))
+
+conf.registerGlobalValue(Status, 'parked_message',
+                    registry.String('Status unavailable. Call 202-556-4225 to check if the space is open.', '''Message printed inplace of the status when in parked mode.'''))
+
+
 # state cache
 conf.registerGlobalValue(Status, 'message_default',  registry.String('no status yet', '''Default status message'''))
 conf.registerGlobalValue(Status, 'message_human',  registry.String('no status yet', '''More verbose human readable status message'''))

@@ -43,28 +43,28 @@ class Status(callbacks.Plugin):
         debug('command callback arguments:', *args_l)
 
     def status(self, irc, msg, args, message_format):
-	''' [default|human|raw] 
+        ''' [default|human|raw] 
 
-	Display the status of the space in a given format (default is 'default' ... who'da thunk).
-	default - as seen in the automatic status change notifications
-	human - a human friendly representation of the state of individual sensors
-	raw - the verbatim string retrived from the sensor's upload
+        Display the status of the space in a given format (default is 'default' ... who'da thunk).
+        default - as seen in the automatic status change notifications
+        human - a human friendly representation of the state of individual sensors
+        raw - the verbatim string retrived from the sensor's upload
 
-	# method arguments as dict for reference
-	# {'irc': '<supybot.callbacks.NestedCommandsIrcProxy object at 0xa26e1ec>',
-	# 'msg': IrcMsg(
-	#	prefix="nick!~username@host",
-	#	command='PRIVMSG',
-	#	args=('#HacDC', '.space')
-	#	),
-	# 'args': [], 
-	# 'message_format': None}
+        # method arguments as dict for reference
+        # {'irc': '<supybot.callbacks.NestedCommandsIrcProxy object at 0xa26e1ec>',
+        # 'msg': IrcMsg(
+        #	prefix="nick!~username@host",
+        #	command='PRIVMSG',
+        #	args=('#HacDC', '.space')
+        #	),
+        # 'args': [], 
+        # 'message_format': None}
 
-        @param  irc		supybot supybot.callbacks.NestedCommandsIrcProxy
-	@param	msg		supybot IrcMsg instance (from supybot/src/ircmsgs.py).
-	@param	args		command arguments as an array
-	@param	message_format	message format argument
-	'''
+            @param  irc		supybot supybot.callbacks.NestedCommandsIrcProxy
+        @param	msg		supybot IrcMsg instance (from supybot/src/ircmsgs.py).
+        @param	args		command arguments as an array
+        @param	message_format	message format argument
+        '''
         self.__debug_callback_args(irc=irc, msg=msg, args=args, message_format=message_format)
         if not message_format:
             message_format = 'default'
@@ -76,6 +76,8 @@ class Status(callbacks.Plugin):
         msgs = self.reg.getall()
         if msgs:
             formats.update(msgs)
+        if  self.reg.get('parked', False):
+            formats = {'alien': alien_msg, 'default': self.reg.get('parked_message'), 'human': self.reg.get('parked_message'), 'raw': self.reg.get('parked_message')}
         if message_format not in formats:
 	    nick = msg.prefix.split('!',1)[0].strip(':')
 	    irc.reply('''I'm sorry %s. I'm afraid I can't do that.''' % nick)
